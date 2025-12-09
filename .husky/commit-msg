@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+
+# Source nvm if available
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+
+# Add common Node.js paths
+export PATH="$HOME/.nvm/versions/node/$(nvm version 2>/dev/null)/bin:$PATH"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+# Get project root and run commitlint
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+COMMITLINT="$PROJECT_ROOT/node_modules/.bin/commitlint"
+
+if [ -f "$COMMITLINT" ]; then
+  "$COMMITLINT" --edit "$1"
+else
+  echo "Error: commitlint not found at $COMMITLINT"
+  echo "Please run: npm install"
+  exit 1
+fi

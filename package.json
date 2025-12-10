@@ -14,7 +14,7 @@
 		"check": "biome check .",
 		"check:fix": "biome check --write .",
 		"prepare": "husky",
-    "commitlint": "commitlint --edit"
+    	"commitlint": "commitlint --edit"
 	},
 	"dependencies": {
 		"@expo/vector-icons": "^15.0.3",

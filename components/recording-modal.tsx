@@ -42,6 +42,7 @@ export function RecordingModal({
 	const analyserRef = useRef<AnalyserNode | null>(null);
 	const dataArrayRef = useRef<Uint8Array | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
+	const recordingMimeTypeRef = useRef<string>("audio/webm");
 	const recordingStopPromiseRef = useRef<{
 		resolve: () => void;
 		reject: (reason?: unknown) => void;
@@ -472,6 +473,8 @@ export function RecordingModal({
 					? "audio/webm"
 					: "audio/ogg";
 
+			recordingMimeTypeRef.current = mimeType;
+
 			const mediaRecorder = new MediaRecorder(stream, {
 				mimeType,
 				audioBitsPerSecond: 128000,
@@ -488,14 +491,40 @@ export function RecordingModal({
 
 			// Handle recording stop
 			mediaRecorder.onstop = () => {
-				const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-				const audioUrl = URL.createObjectURL(audioBlob);
-				if (recordingStopPromiseRef.current) {
-					recordingStopPromiseRef.current.resolve();
-					recordingStopPromiseRef.current = null;
-				}
-				onStop(audioUrl);
-				audioChunksRef.current = [];
+				const audioBlob = new Blob(audioChunksRef.current, {
+					type: recordingMimeTypeRef.current,
+				});
+
+				// Create a data URL for consistent format with mobile
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					const dataUrl = reader.result as string;
+					if (recordingStopPromiseRef.current) {
+						recordingStopPromiseRef.current.resolve();
+						recordingStopPromiseRef.current = null;
+					}
+
+					// Trigger download
+					const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+					const extension = recordingMimeTypeRef.current.includes("webm")
+						? "webm"
+						: recordingMimeTypeRef.current.includes("ogg")
+							? "ogg"
+							: "audio";
+					const filename = `recording-${timestamp}.${extension}`;
+
+					const link = document.createElement("a");
+					link.href = dataUrl;
+					link.download = filename;
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+
+					// Call onStop with data URL (similar format to mobile file://)
+					onStop(dataUrl);
+					audioChunksRef.current = [];
+				};
+				reader.readAsDataURL(audioBlob);
 			};
 
 			// Start recording

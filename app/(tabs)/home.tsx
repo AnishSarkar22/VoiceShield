@@ -1,4 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MicIcon } from "@/components/icons";
+import { ProfileModal } from "@/components/profile-modal";
+import { RecordingModal } from "@/components/recording-modal";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Image } from "expo-image";
 import { useState } from "react";
 import {
 	Dimensions,
@@ -7,12 +12,10 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { RecordingModal } from "@/components/recording-modal";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 
 export default function HomeScreen() {
 	const [isRecording, setIsRecording] = useState(false);
+	const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 	const screenWidth = Dimensions.get("window").width;
 	const isWeb = Platform.OS === "web";
 
@@ -32,8 +35,23 @@ export default function HomeScreen() {
 
 	return (
 		<ThemedView style={styles.container}>
-			<View style={styles.content}>
+			{/* Header */}
+			<View style={styles.header}>
 				<ThemedText style={styles.title}>VoiceShield</ThemedText>
+				<TouchableOpacity
+					style={styles.profileButton}
+					onPress={() => setIsProfileModalVisible(true)}
+					activeOpacity={0.7}
+				>
+					<Image
+						source={require("@/assets/images/profile1.png")}
+						style={styles.profileImage}
+						contentFit="cover"
+					/>
+				</TouchableOpacity>
+			</View>
+
+			<View style={styles.content}>
 				<ThemedText style={styles.subtitle}>Tap to start recording</ThemedText>
 
 				<TouchableOpacity
@@ -48,7 +66,7 @@ export default function HomeScreen() {
 					onPress={handleStartRecording}
 					activeOpacity={0.8}
 				>
-					<Ionicons name="mic" size={48} color="#FFFFFF" />
+					<MicIcon size={48} color="#FFFFFF" />
 				</TouchableOpacity>
 			</View>
 
@@ -57,6 +75,11 @@ export default function HomeScreen() {
 				onClose={handleClose}
 				onStop={handleStopRecording}
 			/>
+
+			<ProfileModal
+				visible={isProfileModalVisible}
+				onClose={() => setIsProfileModalVisible(false)}
+			/>
 		</ThemedView>
 	);
 }
@@ -64,6 +87,22 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	header: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 20,
+		paddingTop: 50,
+		paddingBottom: 20,
+	},
+	profileButton: {
+		padding: 8,
+	},
+	profileImage: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
 	},
 	content: {
 		flex: 1,
@@ -75,8 +114,6 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 32,
 		fontWeight: "bold",
-		marginBottom: 8,
-		textAlign: "center",
 	},
 	subtitle: {
 		fontSize: 16,

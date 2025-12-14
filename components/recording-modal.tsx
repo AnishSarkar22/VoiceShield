@@ -1,16 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
+import { CloseIcon } from "@/components/icons";
 import { Audio } from "expo-av";
 import { BlurView } from "expo-blur";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	Animated,
-	Dimensions,
-	Modal,
-	Platform,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
+    Animated,
+    Dimensions,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 interface RecordingModalProps {
@@ -28,7 +28,9 @@ export function RecordingModal({
 	const [duration, setDuration] = useState(0);
 	const [isRecording, setIsRecording] = useState(false);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const meteringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const meteringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+		null,
+	);
 	const recordingRef = useRef<Audio.Recording | null>(null);
 	const waveformAnimations = useRef<Animated.Value[]>([]);
 	const previousBarValues = useRef<number[]>([]); // Track previous values for smoothing
@@ -121,7 +123,10 @@ export function RecordingModal({
 
 					// Apply frequency sensitivity
 					const frequencySensitivity = frequencyBands.current[index] || 0.7;
-					const normalizedValue = Math.min(1, barValue * frequencySensitivity * 2);
+					const normalizedValue = Math.min(
+						1,
+						barValue * frequencySensitivity * 2,
+					);
 
 					// Only animate if sound is detected
 					if (normalizedValue > 0.05 || averageVolume > 0.05) {
@@ -205,7 +210,8 @@ export function RecordingModal({
 								Math.abs(Math.sin(position * Math.PI * 3)) * 0.25;
 
 							// 4. Add subtle randomness that varies with sound level
-							const randomFactor = (Math.random() - 0.5) * 0.15 * normalizedValue;
+							const randomFactor =
+								(Math.random() - 0.5) * 0.15 * normalizedValue;
 
 							// 5. Smooth transition from previous value (60% previous, 40% new)
 							const previousValue = previousBarValues.current[index] || 0.1;
@@ -330,7 +336,10 @@ export function RecordingModal({
 						meteringIntervalRef.current = null;
 					}
 
-					if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+					if (
+						mediaRecorderRef.current &&
+						mediaRecorderRef.current.state !== "inactive"
+					) {
 						// Create a promise that resolves when recording stops
 						const stopPromise = new Promise<void>((resolve, reject) => {
 							recordingStopPromiseRef.current = { resolve, reject };
@@ -447,7 +456,9 @@ export function RecordingModal({
 
 			// Create AudioContext for real-time audio analysis
 			const AudioContextClass =
-				window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+				window.AudioContext ||
+				(window as unknown as { webkitAudioContext: typeof AudioContext })
+					.webkitAudioContext;
 			const audioContext = new AudioContextClass();
 			audioContextRef.current = audioContext;
 
@@ -683,7 +694,7 @@ export function RecordingModal({
 		<Modal
 			visible={visible}
 			transparent
-			animationType="fade"
+			animationType="slide"
 			onRequestClose={handleClose}
 			statusBarTranslucent
 		>
@@ -706,7 +717,7 @@ export function RecordingModal({
 							<Text style={styles.recordingText}>RECORDING</Text>
 						</View>
 						<TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-							<Ionicons name="close" size={24} color="#FFFFFF" />
+							<CloseIcon size={24} color="#FFFFFF" />
 						</TouchableOpacity>
 					</View>
 
@@ -764,7 +775,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(0, 0, 0, 0.5)",
 	},
 	recordingOverlay: {
-		backgroundColor: "#000000",
+		backgroundColor: "#1a1a1a",
 		borderTopLeftRadius: 24,
 		borderTopRightRadius: 24,
 		paddingHorizontal: 24,

@@ -1,11 +1,12 @@
-import { MicIcon } from "@/components/icons";
+import { MicIcon, ProfileIcon } from "@/components/icons";
 import { ProfileModal } from "@/components/profile-modal";
 import { RecordingModal } from "@/components/recording-modal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Image } from "expo-image";
-import { useState } from "react";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useRef, useState } from "react";
 import {
+	Animated,
 	Dimensions,
 	Platform,
 	StyleSheet,
@@ -18,6 +19,26 @@ export default function HomeScreen() {
 	const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 	const screenWidth = Dimensions.get("window").width;
 	const isWeb = Platform.OS === "web";
+	const iconColor = useThemeColor({}, "text");
+	const scaleAnim = useRef(new Animated.Value(1)).current;
+
+	const handlePressIn = () => {
+		Animated.spring(scaleAnim, {
+			toValue: 0.9,
+			useNativeDriver: true,
+			tension: 300,
+			friction: 10,
+		}).start();
+	};
+
+	const handlePressOut = () => {
+		Animated.spring(scaleAnim, {
+			toValue: 1,
+			useNativeDriver: true,
+			tension: 300,
+			friction: 10,
+		}).start();
+	};
 
 	const handleStartRecording = () => {
 		setIsRecording(true);
@@ -43,11 +64,7 @@ export default function HomeScreen() {
 					onPress={() => setIsProfileModalVisible(true)}
 					activeOpacity={0.7}
 				>
-					<Image
-						source={require("@/assets/images/profile1.png")}
-						style={styles.profileImage}
-						contentFit="cover"
-					/>
+					<ProfileIcon size={32} color={iconColor} />
 				</TouchableOpacity>
 			</View>
 
@@ -55,18 +72,24 @@ export default function HomeScreen() {
 				<ThemedText style={styles.subtitle}>Tap to start recording</ThemedText>
 
 				<TouchableOpacity
-					style={[
-						styles.recordButton,
-						{
-							width: isWeb ? Math.min(screenWidth * 0.3, 120) : 120,
-							height: isWeb ? Math.min(screenWidth * 0.3, 120) : 120,
-							borderRadius: isWeb ? Math.min(screenWidth * 0.15, 60) : 60,
-						},
-					]}
+					onPressIn={handlePressIn}
+					onPressOut={handlePressOut}
 					onPress={handleStartRecording}
-					activeOpacity={0.8}
+					activeOpacity={1}
 				>
-					<MicIcon size={48} color="#FFFFFF" />
+					<Animated.View
+						style={[
+							styles.recordButton,
+							{
+								width: isWeb ? Math.min(screenWidth * 0.3, 120) : 120,
+								height: isWeb ? Math.min(screenWidth * 0.3, 120) : 120,
+								borderRadius: isWeb ? Math.min(screenWidth * 0.15, 60) : 60,
+								transform: [{ scale: scaleAnim }],
+							},
+						]}
+					>
+						<MicIcon size={48} color="#FFFFFF" />
+					</Animated.View>
 				</TouchableOpacity>
 			</View>
 
@@ -98,11 +121,6 @@ const styles = StyleSheet.create({
 	},
 	profileButton: {
 		padding: 8,
-	},
-	profileImage: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
 	},
 	content: {
 		flex: 1,

@@ -1,0 +1,113 @@
+name: Android Build (Gradle)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+
+      # Extract version information from app.json
+      - name: Extract version info
+        id: version
+        run: |
+          VERSION_NAME=$(node -p "require('./app.json').expo.version")
+          BASE_VERSION_CODE=$(node -p "require('./app.json').expo.android.versionCode || 1")
+          # Use GitHub run number for auto-incrementing version code
+          # This ensures each build has a unique, incrementing version code
+          VERSION_CODE=$((BASE_VERSION_CODE + ${{ github.run_number }} - 1))
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "📦 Version Name: $VERSION_NAME"
+          echo "🔢 Version Code: $VERSION_CODE"
+
+      # Generate native Android project (one-time setup)
+      # After this, we build purely with Gradle - no Expo CLI
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --clean
+
+      # Update version in build.gradle
+      - name: Set Android version
+        run: |
+          cd android/app
+          # Update versionName and versionCode in build.gradle
+          sed -i "s/versionName \".*\"/versionName \"${{ steps.version.outputs.version_name }}\"/" build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.version.outputs.version_code }}/" build.gradle
+          echo "✅ Updated versionName to ${{ steps.version.outputs.version_name }}"
+          echo "✅ Updated versionCode to ${{ steps.version.outputs.version_code }}"
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      # Pure Gradle build - no Expo CLI involved
+      - name: Build APK (Debug) with Gradle
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      # Pure Gradle build for release AAB
+      # - name: Build AAB (Release) with Gradle
+      #   run: |
+      #     cd android
+      #     ./gradlew bundleRelease --no-daemon
+      #   continue-on-error: true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      # - name: Upload AAB artifact
+      #   uses: actions/upload-artifact@v4
+      #   if: success() || failure()
+      #   with:
+      #     name: app-release-v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}.aab
+      #     path: android/app/build/outputs/bundle/release/app-release.aab
+      #     retention-days: 30
+      #     continue-on-error: true

@@ -1,5 +1,10 @@
 import { CloseIcon } from "@/components/icons";
-import { Audio } from "expo-av";
+import {
+    AudioModule,
+    RecordingPresets,
+    useAudioRecorder,
+    useAudioRecorderState,
+} from "expo-audio";
 import { BlurView } from "expo-blur";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -24,14 +29,44 @@ export function RecordingModal({
 	onClose,
 	onStop,
 }: RecordingModalProps) {
-	const [recording, setRecording] = useState<Audio.Recording | null>(null);
 	const [duration, setDuration] = useState(0);
 	const [isRecording, setIsRecording] = useState(false);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const meteringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null,
 	);
-	const recordingRef = useRef<Audio.Recording | null>(null);
+
+	// expo-audio recorder
+	const audioRecorder = useAudioRecorder({
+		...RecordingPresets.HIGH_QUALITY,
+		android: {
+			extension: ".m4a",
+			outputFormat: "mpeg4", // MPEG_4
+			audioEncoder: "aac", // AAC
+			sampleRate: 44100,
+			numberOfChannels: 2,
+			bitRate: 128000,
+		},
+		ios: {
+			extension: ".m4a",
+			outputFormat: "mpeg4aac", // MPEG4AAC
+			audioQuality: 127, // HIGH (number)
+			sampleRate: 44100,
+			numberOfChannels: 2,
+			bitRate: 128000,
+			linearPCMBitDepth: 16,
+			linearPCMIsBigEndian: false,
+			linearPCMIsFloat: false,
+		},
+		web: {
+			mimeType: "audio/webm",
+			bitsPerSecond: 128000,
+		},
+		isMeteringEnabled: true,
+	});
+
+	// Get recorder state for metering
+	const recordingState = useAudioRecorderState(audioRecorder, 50);
 	const waveformAnimations = useRef<Animated.Value[]>([]);
 	const previousBarValues = useRef<number[]>([]); // Track previous values for smoothing
 	const frequencyBands = useRef<number[]>([]); // Simulate different frequency band sensitivities
@@ -167,13 +202,12 @@ export function RecordingModal({
 				// Silently handle errors
 			}
 		} else {
-			// Native: Use expo-av metering
-			if (!recording) return;
+			// Native: Use expo-audio metering
+			if (!recordingState || !recordingState.isRecording) return;
 
 			try {
-				const status = await recording.getStatusAsync();
-				if (status.isRecording && status.metering !== undefined) {
-					const meterValue = status.metering; // Negative dB value (e.g., -160 to 0)
+				if (recordingState.metering !== undefined) {
+					const meterValue = recordingState.metering; // Negative dB value (e.g., -160 to 0)
 
 					// Only animate if sound is detected above threshold
 					// Meter values closer to 0 are louder, so we check if meterValue > threshold
@@ -257,7 +291,7 @@ export function RecordingModal({
 				// Silently handle errors (recording might have stopped)
 			}
 		}
-	}, [recording, isWeb]);
+	}, [recordingState, isWeb]);
 
 	// Start metering updates when recording
 	useEffect(() => {
@@ -271,7 +305,7 @@ export function RecordingModal({
 				}
 			} else {
 				// Native: Poll metering data every 50ms for smooth updates
-				if (recording) {
+				if (audioRecorder.isRecording) {
 					meteringIntervalRef.current = setInterval(() => {
 						updateWaveform();
 					}, 50);
@@ -294,7 +328,13 @@ export function RecordingModal({
 				meteringIntervalRef.current = null;
 			}
 		};
-	}, [isRecording, recording, updateWaveform, isWeb]);
+	}, [
+		isRecording,
+		recordingState,
+		updateWaveform,
+		isWeb,
+		audioRecorder.isRecording,
+	]);
 
 	// Drive timer independent of recording implementation
 	useEffect(() => {
@@ -382,10 +422,7 @@ export function RecordingModal({
 					}
 				}
 			} else {
-				// Native: Stop expo-av recording
-				const currentRecording = recording;
-				if (!currentRecording) return;
-
+				// Native: Stop expo-audio recording
 				try {
 					setIsRecording(false);
 					if (intervalRef.current) {
@@ -397,46 +434,26 @@ export function RecordingModal({
 						meteringIntervalRef.current = null;
 					}
 
-					try {
-						const status = await currentRecording.getStatusAsync();
-						if (status.isRecording) {
-							await currentRecording.stopAndUnloadAsync();
-							const uri = currentRecording.getURI();
-							if (uri && save) {
-								onStop(uri);
-							}
-						} else {
-							// Already stopped, just get the URI
-							const uri = currentRecording.getURI();
-							if (uri && save) {
-								onStop(uri);
-							}
-							// Try to clean up
-							try {
-								await currentRecording.stopAndUnloadAsync();
-							} catch {
-								// Ignore cleanup errors
-							}
+					if (audioRecorder.isRecording) {
+						await audioRecorder.stop();
+						const uri = audioRecorder.uri;
+						if (uri && save) {
+							onStop(uri);
 						}
-					} catch {
-						// Try to unload even if stop fails
-						try {
-							await currentRecording.stopAndUnloadAsync();
-						} catch {
-							// Ignore cleanup errors
+					} else {
+						// Already stopped, just get the URI
+						const uri = audioRecorder.uri;
+						if (uri && save) {
+							onStop(uri);
 						}
 					}
-					recordingRef.current = null;
-					setRecording(null);
 					setDuration(0);
 				} catch (err) {
 					console.error("Failed to stop recording", err);
-					recordingRef.current = null;
-					setRecording(null);
 				}
 			}
 		},
-		[recording, onStop, isWeb],
+		[audioRecorder, onStop, isWeb],
 	);
 
 	// Web-specific recording function
@@ -553,54 +570,38 @@ export function RecordingModal({
 	const startRecordingNative = useCallback(async () => {
 		try {
 			// Clean up any existing recording first
-			const existingRecording = recordingRef.current;
-			if (existingRecording) {
+			if (audioRecorder.isRecording) {
 				try {
-					const status = await existingRecording.getStatusAsync();
-					if (status.isRecording) {
-						await existingRecording.stopAndUnloadAsync();
-					} else {
-						// Already stopped, try to clean up
-						try {
-							await existingRecording.stopAndUnloadAsync();
-						} catch {
-							// Ignore cleanup errors
-						}
-					}
+					await audioRecorder.stop();
 				} catch {
-					// Ignore cleanup errors, just try to unload
-					try {
-						await existingRecording.stopAndUnloadAsync();
-					} catch {
-						// Ignore
-					}
+					// Ignore cleanup errors
 				}
-				recordingRef.current = null;
-				setRecording(null);
 			}
 
-			await Audio.requestPermissionsAsync();
-			await Audio.setAudioModeAsync({
-				allowsRecordingIOS: true,
-				playsInSilentModeIOS: true,
-			});
+			// Request permissions
+			const permissionStatus =
+				await AudioModule.requestRecordingPermissionsAsync();
+			if (!permissionStatus.granted) {
+				console.error("Microphone permission denied");
+				setIsRecording(false);
+				return;
+			}
 
-			const { recording: newRecording } = await Audio.Recording.createAsync({
-				...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+			// Prepare and start recording
+			await audioRecorder.prepareToRecordAsync({
+				...RecordingPresets.HIGH_QUALITY,
 				android: {
-					...Audio.RecordingOptionsPresets.HIGH_QUALITY.android,
 					extension: ".m4a",
-					outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-					audioEncoder: Audio.AndroidAudioEncoder.AAC,
+					outputFormat: "mpeg4", // MPEG_4
+					audioEncoder: "aac", // AAC
 					sampleRate: 44100,
 					numberOfChannels: 2,
 					bitRate: 128000,
 				},
 				ios: {
-					...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios,
 					extension: ".m4a",
-					outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-					audioQuality: Audio.IOSAudioQuality.HIGH,
+					outputFormat: "mpeg4aac", // MPEG4AAC
+					audioQuality: 127, // HIGH (number)
 					sampleRate: 44100,
 					numberOfChannels: 2,
 					bitRate: 128000,
@@ -614,17 +615,15 @@ export function RecordingModal({
 				},
 				isMeteringEnabled: true, // Enable metering for sound detection
 			});
-			recordingRef.current = newRecording;
-			setRecording(newRecording);
+
+			audioRecorder.record();
 			setIsRecording(true);
 			setDuration(0);
 		} catch (err) {
 			console.error("Failed to start recording", err);
-			recordingRef.current = null;
-			setRecording(null);
 			setIsRecording(false);
 		}
-	}, []);
+	}, [audioRecorder]);
 
 	// Unified start recording function
 	const startRecording = useCallback(async () => {
@@ -643,13 +642,12 @@ export function RecordingModal({
 			}
 		} else {
 			// Native: Stop recording if active
-			const currentRecording = recording;
-			if (currentRecording) {
+			if (audioRecorder.isRecording) {
 				await stopRecording(false);
 			}
 		}
 		onClose();
-	}, [recording, stopRecording, onClose, isWeb, isRecording]);
+	}, [audioRecorder.isRecording, stopRecording, onClose, isWeb, isRecording]);
 
 	useEffect(() => {
 		if (visible && !isRecording) {

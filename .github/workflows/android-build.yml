@@ -3,11 +3,11 @@ name: Android Build (Gradle)
 on:
   push:
     branches:
-      - main
+      - master
       - develop
   pull_request:
     branches:
-      - main
+      - master
       - develop
   workflow_dispatch: # Allows manual triggering
 
@@ -102,6 +102,32 @@ jobs:
           name: app-debug-v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}.apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      # Create GitHub Release and upload APK (only on master branch, not PRs)
+      - name: Create Release and Upload APK
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}
+          name: Release v${{ steps.version.outputs.version_name }} (Build ${{ steps.version.outputs.version_code }})
+          body: |
+            ## VoiceShield Android Build
+            
+            **Version:** ${{ steps.version.outputs.version_name }}
+            **Version Code:** ${{ steps.version.outputs.version_code }}
+            **Build Number:** ${{ github.run_number }}
+            
+            ### Changes
+            - Automated build from commit: ${{ github.sha }}
+            
+            ### Installation
+            Download the APK below and install on your Android device.
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Upload AAB artifact
       #   uses: actions/upload-artifact@v4

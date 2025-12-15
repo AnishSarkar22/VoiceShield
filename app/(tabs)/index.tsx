@@ -1,6 +1,6 @@
 import { MicIcon, ProfileIcon } from "@/components/icons";
-import { ProfileModal } from "@/components/profile-modal";
-import { RecordingModal } from "@/components/recording-modal";
+import { ProfileModal } from "@/components/modals/profile-modal";
+import { RecordingModal } from "@/components/modals/recording-modal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";

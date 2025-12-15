@@ -1,5 +1,6 @@
 import { HomeIcon, RecordingsIcon } from "@/components/icons";
 import { CommonActions } from "@react-navigation/native";
+import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { BottomNavigation } from "react-native-paper";
@@ -16,6 +17,11 @@ export default function TabLayout() {
 					navigationState={state}
 					safeAreaInsets={insets}
 					onTabPress={({ route, preventDefault }) => {
+						// Add haptic feedback when pressing tabs (iOS only)
+						if (process.env.EXPO_OS === "ios") {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+						}
+
 						const event = navigation.emit({
 							type: "tabPress",
 							target: route.key,
@@ -56,7 +62,7 @@ export default function TabLayout() {
 			)}
 		>
 			<Tabs.Screen
-				name="home"
+				name="index"
 				options={{
 					title: "Home",
 					tabBarIcon: ({ color }) => <HomeIcon color={color} size={26} />,

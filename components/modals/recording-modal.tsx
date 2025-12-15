@@ -1,22 +1,33 @@
-import { CloseIcon } from "@/components/icons";
 import {
-    AudioModule,
-    RecordingPresets,
-    useAudioRecorder,
-    useAudioRecorderState,
+	AudioModule,
+	RecordingPresets,
+	useAudioRecorder,
+	useAudioRecorderState,
 } from "expo-audio";
 import { BlurView } from "expo-blur";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+	Animated,
+	Dimensions,
+	Modal,
+	Platform,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
 } from "react-native";
+import {
+	Gesture,
+	GestureDetector,
+	GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import AnimatedReanimated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+	withTiming,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 interface RecordingModalProps {
 	visible: boolean;
@@ -39,21 +50,17 @@ export function RecordingModal({
 	// expo-audio recorder
 	const audioRecorder = useAudioRecorder({
 		...RecordingPresets.HIGH_QUALITY,
+		extension: ".m4a",
+		sampleRate: 44100,
+		numberOfChannels: 2,
+		bitRate: 128000,
 		android: {
-			extension: ".m4a",
 			outputFormat: "mpeg4", // MPEG_4
 			audioEncoder: "aac", // AAC
-			sampleRate: 44100,
-			numberOfChannels: 2,
-			bitRate: 128000,
 		},
 		ios: {
-			extension: ".m4a",
 			outputFormat: "mpeg4aac", // MPEG4AAC
 			audioQuality: 127, // HIGH (number)
-			sampleRate: 44100,
-			numberOfChannels: 2,
-			bitRate: 128000,
 			linearPCMBitDepth: 16,
 			linearPCMIsBigEndian: false,
 			linearPCMIsFloat: false,
@@ -85,6 +92,8 @@ export function RecordingModal({
 		reject: (reason?: unknown) => void;
 	} | null>(null);
 	const isWeb = Platform.OS === "web";
+	const screenHeight = Dimensions.get("window").height;
+	const translateY = useSharedValue(0);
 
 	// Initialize waveform bars (50 bars for smooth visualization)
 	const waveformBarKeys = useRef<string[]>(
@@ -328,13 +337,7 @@ export function RecordingModal({
 				meteringIntervalRef.current = null;
 			}
 		};
-	}, [
-		isRecording,
-		recordingState,
-		updateWaveform,
-		isWeb,
-		audioRecorder.isRecording,
-	]);
+	}, [isRecording, updateWaveform, isWeb, audioRecorder.isRecording]);
 
 	// Drive timer independent of recording implementation
 	useEffect(() => {
@@ -590,21 +593,17 @@ export function RecordingModal({
 			// Prepare and start recording
 			await audioRecorder.prepareToRecordAsync({
 				...RecordingPresets.HIGH_QUALITY,
+				extension: ".m4a",
+				sampleRate: 44100,
+				numberOfChannels: 2,
+				bitRate: 128000,
 				android: {
-					extension: ".m4a",
 					outputFormat: "mpeg4", // MPEG_4
 					audioEncoder: "aac", // AAC
-					sampleRate: 44100,
-					numberOfChannels: 2,
-					bitRate: 128000,
 				},
 				ios: {
-					extension: ".m4a",
 					outputFormat: "mpeg4aac", // MPEG4AAC
 					audioQuality: 127, // HIGH (number)
-					sampleRate: 44100,
-					numberOfChannels: 2,
-					bitRate: 128000,
 					linearPCMBitDepth: 16,
 					linearPCMIsBigEndian: false,
 					linearPCMIsFloat: false,
@@ -686,7 +685,43 @@ export function RecordingModal({
 		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	};
 
-	const screenHeight = Dimensions.get("window").height;
+	// Gesture handling for drag to close
+	useEffect(() => {
+		if (visible) {
+			translateY.value = 0;
+		}
+	}, [visible, translateY]);
+
+	const panGesture = Gesture.Pan()
+		.activeOffsetY(10)
+		.onUpdate((event) => {
+			translateY.value = Math.max(0, event.translationY);
+		})
+		.onEnd((event) => {
+			const shouldClose = event.translationY > 100 || event.velocityY > 500;
+
+			if (shouldClose) {
+				translateY.value = withTiming(screenHeight, { duration: 200 }, () => {
+					scheduleOnRN(handleClose);
+					translateY.value = 0;
+				});
+			} else {
+				translateY.value = withSpring(0, {
+					damping: 8,
+					stiffness: 50,
+				});
+			}
+		});
+
+	const animatedStyle = useAnimatedStyle(() => {
+		return {
+			transform: [
+				{
+					translateY: translateY.value,
+				},
+			],
+		};
+	});
 
 	return (
 		<Modal
@@ -696,69 +731,79 @@ export function RecordingModal({
 			onRequestClose={handleClose}
 			statusBarTranslucent
 		>
-			<View style={styles.container}>
-				{/* Blurred background */}
-				{isWeb ? (
-					<View style={styles.blurBackground} />
-				) : (
-					<BlurView intensity={80} style={StyleSheet.absoluteFill} />
-				)}
+			<GestureHandlerRootView style={styles.container}>
+				<View style={styles.container}>
+					{/* Blurred background */}
+					{isWeb ? (
+						<View style={styles.blurBackground} />
+					) : (
+						<BlurView intensity={80} style={StyleSheet.absoluteFill} />
+					)}
 
-				{/* Recording overlay */}
-				<View
-					style={[styles.recordingOverlay, { maxHeight: screenHeight * 0.4 }]}
-				>
-					{/* Header */}
-					<View style={styles.header}>
-						<View style={styles.recordingIndicator}>
-							<View style={styles.redDot} />
-							<Text style={styles.recordingText}>RECORDING</Text>
-						</View>
-						<TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-							<CloseIcon size={24} color="#FFFFFF" />
-						</TouchableOpacity>
-					</View>
+					{/* Recording overlay */}
+					<GestureDetector gesture={panGesture}>
+						<AnimatedReanimated.View
+							style={[
+								styles.recordingOverlay,
+								{ maxHeight: screenHeight * 0.4 },
+								animatedStyle,
+							]}
+						>
+							{/* Drag handle area - larger touch target */}
+							<View style={styles.dragHandleContainer}>
+								<View style={styles.dragHandle} />
+							</View>
 
-					{/* Timer */}
-					<Text style={styles.timer}>{formatTime(duration)}</Text>
+							{/* Header */}
+							<View style={styles.header}>
+								<View style={styles.recordingIndicator}>
+									<View style={styles.redDot} />
+									<Text style={styles.recordingText}>RECORDING</Text>
+								</View>
+							</View>
 
-					{/* Waveform */}
-					<View style={styles.waveformContainer}>
-						{waveformAnimations.current.map((anim, index) => {
-							const scaleY = anim.interpolate({
-								inputRange: [0, 1],
-								outputRange: [0.1, 1],
-							});
-							const barKey = waveformBarKeys.current[index];
-							return (
-								<Animated.View
-									key={barKey}
-									style={[
-										styles.waveformBar,
-										{
-											transform: [{ scaleY }],
-										},
-									]}
-								/>
-							);
-						})}
-					</View>
+							{/* Timer */}
+							<Text style={styles.timer}>{formatTime(duration)}</Text>
 
-					{/* Stop button */}
-					<TouchableOpacity
-						onPress={() => {
-							void stopRecording(true);
-						}}
-						style={styles.stopButton}
-						activeOpacity={0.8}
-					>
-						<View style={styles.stopButtonInner} />
-					</TouchableOpacity>
+							{/* Waveform */}
+							<View style={styles.waveformContainer}>
+								{waveformAnimations.current.map((anim, index) => {
+									const scaleY = anim.interpolate({
+										inputRange: [0, 1],
+										outputRange: [0.1, 1],
+									});
+									const barKey = waveformBarKeys.current[index];
+									return (
+										<Animated.View
+											key={barKey}
+											style={[
+												styles.waveformBar,
+												{
+													transform: [{ scaleY }],
+												},
+											]}
+										/>
+									);
+								})}
+							</View>
 
-					{/* Instruction text */}
-					<Text style={styles.instructionText}>Tap to stop and save</Text>
+							{/* Stop button */}
+							<TouchableOpacity
+								onPress={() => {
+									void stopRecording(true);
+								}}
+								style={styles.stopButton}
+								activeOpacity={0.8}
+							>
+								<View style={styles.stopButtonInner} />
+							</TouchableOpacity>
+
+							{/* Instruction text */}
+							<Text style={styles.instructionText}>Tap to stop and save</Text>
+						</AnimatedReanimated.View>
+					</GestureDetector>
 				</View>
-			</View>
+			</GestureHandlerRootView>
 		</Modal>
 	);
 }
@@ -777,14 +822,34 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 24,
 		borderTopRightRadius: 24,
 		paddingHorizontal: 24,
-		paddingTop: 20,
+		paddingTop: 12,
 		paddingBottom: Platform.OS === "web" ? 40 : 60,
+		// marginBottom: Platform.OS === "web" ? 20 : 10,
 		width: "100%",
 		minHeight: 300,
+		shadowColor: "#000",
+		shadowOffset: {
+			width: 0,
+			height: -4,
+		},
+		shadowOpacity: 0.3,
+		shadowRadius: 12,
+		elevation: 20,
+	},
+	dragHandleContainer: {
+		alignItems: "center",
+		paddingVertical: 12,
+		marginBottom: 4,
+	},
+	dragHandle: {
+		width: 40,
+		height: 4,
+		backgroundColor: "rgba(255, 255, 255, 0.3)",
+		borderRadius: 2,
 	},
 	header: {
 		flexDirection: "row",
-		justifyContent: "space-between",
+		justifyContent: "center",
 		alignItems: "center",
 		marginBottom: 20,
 	},
@@ -804,9 +869,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: "600",
 		letterSpacing: 0.5,
-	},
-	closeButton: {
-		padding: 4,
 	},
 	timer: {
 		color: "#FFFFFF",

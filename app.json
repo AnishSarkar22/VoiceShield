@@ -21,10 +21,7 @@
 			},
 			"versionCode": 1,
 			"minSdkVersion": 21,
-			"permissions": [
-				"RECORD_AUDIO",
-				"WRITE_EXTERNAL_STORAGE"
-			],
+			"permissions": ["RECORD_AUDIO", "WRITE_EXTERNAL_STORAGE"],
 			"edgeToEdgeEnabled": true,
 			"predictiveBackGestureEnabled": false
 		},

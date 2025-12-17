@@ -1,81 +1,33 @@
-import { BlurView } from "expo-blur";
-import React from "react";
+import { DeleteIcon, EmailIcon } from "@/components/icons";
+import { getAllRecordings } from "@/services/database";
 import {
-	Dimensions,
+	BottomSheetBackdrop,
+	type BottomSheetBackdropProps,
+	BottomSheetModal,
+	BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
 	Image,
-	Modal,
 	Platform,
-	ScrollView,
 	StyleSheet,
 	Text,
 	TouchableOpacity,
 	View,
 } from "react-native";
-import {
-	Gesture,
-	GestureDetector,
-	GestureHandlerRootView,
-} from "react-native-gesture-handler";
-import Animated, {
-	useAnimatedStyle,
-	useSharedValue,
-	withSpring,
-	withTiming,
-} from "react-native-reanimated";
-import Svg, { Path } from "react-native-svg";
-import { scheduleOnRN } from "react-native-worklets";
 
 interface ProfileModalProps {
 	visible: boolean;
 	onClose: () => void;
 }
 
-// Simple icon components for detail items
-function EmailIcon({
-	size = 20,
-	color = "#FFFFFF",
-}: {
-	size?: number;
-	color?: string;
-}) {
-	return (
-		<View
-			style={{
-				width: size,
-				height: size,
-				justifyContent: "center",
-				alignItems: "center",
-			}}
-		>
-			<Text style={{ color, fontSize: size * 0.7 }}>✉</Text>
-		</View>
-	);
-}
-
-function DeleteIcon({
-	size = 18,
-	color = "#FFFFFF",
-}: {
-	size?: number;
-	color?: string;
-}) {
-	return (
-		<Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-			<Path
-				d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
-				stroke={color}
-				strokeWidth="2"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</Svg>
-	);
-}
-
 export function ProfileModal({ visible, onClose }: ProfileModalProps) {
-	const isWeb = Platform.OS === "web";
-	const screenHeight = Dimensions.get("window").height;
-	const translateY = useSharedValue(0);
+	const bottomSheetRef = useRef<BottomSheetModal>(null);
+	const [recordingsCount, setRecordingsCount] = useState(0);
+
+	// Snap points for the bottom sheet
+	const snapPoints = useMemo(() => ["85%"], []);
 
 	// Mock profile data - replace with actual data from your state/context
 	const profileData = {
@@ -83,148 +35,110 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
 		email: "john.doe@example.com",
 		phone: "+1 (555) 123-4567",
 		memberSince: "January 2024",
-		totalRecordings: 42,
 	};
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (visible) {
-			translateY.value = 0;
+			bottomSheetRef.current?.present();
+			// Fetch actual recordings count
+			getAllRecordings().then((recordings) => {
+				setRecordingsCount(recordings.length);
+			});
+		} else {
+			bottomSheetRef.current?.dismiss();
 		}
-	}, [visible, translateY]);
+	}, [visible]);
 
-	const panGesture = Gesture.Pan()
-		.activeOffsetY(10)
-		.onUpdate((event) => {
-			translateY.value = Math.max(0, event.translationY);
-		})
-		.onEnd((event) => {
-			const shouldClose = event.translationY > 100 || event.velocityY > 500;
+	const handleDismiss = useCallback(() => {
+		onClose();
+	}, [onClose]);
 
-			if (shouldClose) {
-				translateY.value = withTiming(screenHeight, { duration: 200 }, () => {
-					scheduleOnRN(onClose);
-					translateY.value = 0;
-				});
-			} else {
-				translateY.value = withSpring(0, {
-					damping: 8,
-					stiffness: 50,
-				});
-			}
-		});
-
-	const animatedStyle = useAnimatedStyle(() => {
-		return {
-			transform: [
-				{
-					translateY: translateY.value,
-				},
-			],
-		};
-	});
+	const renderBackdrop = useCallback(
+		(props: BottomSheetBackdropProps) => (
+			<BottomSheetBackdrop
+				{...props}
+				disappearsOnIndex={-1}
+				appearsOnIndex={0}
+				opacity={0.6}
+			/>
+		),
+		[],
+	);
 
 	return (
-		<Modal
-			visible={visible}
-			transparent
-			animationType="slide"
-			onRequestClose={onClose}
-			statusBarTranslucent
+		<BottomSheetModal
+			ref={bottomSheetRef}
+			snapPoints={snapPoints}
+			onDismiss={handleDismiss}
+			enablePanDownToClose
+			backdropComponent={renderBackdrop}
+			backgroundStyle={styles.sheetBackground}
+			handleIndicatorStyle={styles.handleIndicator}
+			topInset={130}
 		>
-			<GestureHandlerRootView style={styles.container}>
-				<View style={styles.container}>
-					{/* Blurred background */}
-					{isWeb ? (
-						<View style={styles.blurBackground} />
-					) : (
-						<BlurView intensity={80} style={StyleSheet.absoluteFill} />
-					)}
+			{/* Header */}
+			<View style={styles.header}>
+				<Text style={styles.headerTitle}>Profile</Text>
+				<TouchableOpacity
+					onPress={() => {
+						// TODO: Implement delete account functionality
+						console.log("Delete account pressed");
+					}}
+					style={styles.deleteIconButton}
+					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+				>
+					<DeleteIcon size={18} color="rgba(239, 68, 68, 0.7)" />
+				</TouchableOpacity>
+			</View>
 
-					{/* Profile overlay */}
-					<GestureDetector gesture={panGesture}>
-						<Animated.View
-							style={[
-								styles.profileOverlay,
-								{ maxHeight: screenHeight * 0.85 },
-								animatedStyle,
-							]}
-						>
-							{/* Drag handle area - larger touch target */}
-							<View style={styles.dragHandleContainer}>
-								<View style={styles.dragHandle} />
-							</View>
-
-							{/* Header */}
-							<View style={styles.header}>
-								<Text style={styles.headerTitle}>Profile</Text>
-								<TouchableOpacity
-									onPress={() => {
-										// TODO: Implement delete account functionality
-										console.log("Delete account pressed");
-									}}
-									style={styles.deleteIconButton}
-									hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-								>
-									<DeleteIcon size={18} color="rgba(239, 68, 68, 0.7)" />
-								</TouchableOpacity>
-							</View>
-
-							<ScrollView
-								showsVerticalScrollIndicator={false}
-								contentContainerStyle={styles.scrollContent}
-							>
-								{/* Profile Card Section */}
-								<View style={styles.profileCard}>
-									<View style={styles.avatar}>
-										<View style={styles.avatarInner}>
-											<Image
-												source={require("@/assets/images/profile1.png")}
-												style={styles.avatarImage}
-												resizeMode="cover"
-											/>
-										</View>
-									</View>
-									<Text style={styles.userName}>{profileData.name}</Text>
-									<View style={styles.statsRow}>
-										<View style={styles.statItem}>
-											<Text style={styles.statValue}>
-												{profileData.totalRecordings}
-											</Text>
-											<Text style={styles.statLabel}>Recordings</Text>
-										</View>
-										<View style={styles.statDivider} />
-										<View style={styles.statItem}>
-											<Text style={styles.statValue}>
-												{profileData.memberSince.split(" ")[1]}
-											</Text>
-											<Text style={styles.statLabel}>Member Since</Text>
-										</View>
-									</View>
-								</View>
-
-								{/* Section Divider */}
-								<View style={styles.sectionDivider}>
-									<View style={styles.dividerLine} />
-									<Text style={styles.sectionTitle}>Personal Information</Text>
-									<View style={styles.dividerLine} />
-								</View>
-
-								{/* Personal Details */}
-								<View style={styles.detailsContainer}>
-									<ProfileDetailItem
-										label="Email Address"
-										value={profileData.email}
-										icon={
-											<EmailIcon size={20} color="rgba(255, 255, 255, 0.7)" />
-										}
-									/>
-								</View>
-							</ScrollView>
-						</Animated.View>
-					</GestureDetector>
+			<BottomSheetScrollView
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={styles.scrollContent}
+			>
+				{/* Profile Card Section */}
+				<View style={styles.profileCard}>
+					<View style={styles.avatar}>
+						<View style={styles.avatarInner}>
+							<Image
+								source={require("@/assets/images/profile1.png")}
+								style={styles.avatarImage}
+								resizeMode="cover"
+							/>
+						</View>
+					</View>
+					<Text style={styles.userName}>{profileData.name}</Text>
+					<View style={styles.statsRow}>
+						<View style={styles.statItem}>
+							<Text style={styles.statValue}>{recordingsCount}</Text>
+							<Text style={styles.statLabel}>Recordings</Text>
+						</View>
+						<View style={styles.statDivider} />
+						<View style={styles.statItem}>
+							<Text style={styles.statValue}>
+								{profileData.memberSince.split(" ")[1]}
+							</Text>
+							<Text style={styles.statLabel}>Member Since</Text>
+						</View>
+					</View>
 				</View>
-			</GestureHandlerRootView>
-		</Modal>
+
+				{/* Section Divider */}
+				<View style={styles.sectionDivider}>
+					<View style={styles.dividerLine} />
+					<Text style={styles.sectionTitle}>Personal Information</Text>
+					<View style={styles.dividerLine} />
+				</View>
+
+				{/* Personal Details */}
+				<View style={styles.detailsContainer}>
+					<ProfileDetailItem
+						label="Email Address"
+						value={profileData.email}
+						icon={<EmailIcon size={20} color="rgba(255, 255, 255, 0.7)" />}
+					/>
+				</View>
+			</BottomSheetScrollView>
+		</BottomSheetModal>
 	);
 }
 
@@ -249,49 +163,20 @@ function ProfileDetailItem({
 }
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		justifyContent: "flex-end",
-	},
-	blurBackground: {
-		...StyleSheet.absoluteFillObject,
-		backgroundColor: "rgba(0, 0, 0, 0.6)",
-	},
-	profileOverlay: {
+	sheetBackground: {
 		backgroundColor: "#1a1a1a",
-		borderTopLeftRadius: 32,
-		borderTopRightRadius: 32,
-		paddingHorizontal: 20,
-		paddingTop: 12,
-		paddingBottom: Platform.OS === "web" ? 40 : 60,
-		width: "100%",
-		minHeight: 400,
-		shadowColor: "#000",
-		shadowOffset: {
-			width: 0,
-			height: -4,
-		},
-		shadowOpacity: 0.3,
-		shadowRadius: 12,
-		elevation: 20,
 	},
-	dragHandleContainer: {
-		alignItems: "center",
-		paddingVertical: 12,
-		marginBottom: 4,
-	},
-	dragHandle: {
-		width: 40,
-		height: 4,
+	handleIndicator: {
 		backgroundColor: "rgba(255, 255, 255, 0.3)",
-		borderRadius: 2,
+		width: 40,
 	},
 	header: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
 		marginBottom: 32,
-		paddingHorizontal: 4,
+		paddingHorizontal: 24,
+		paddingTop: 8,
 	},
 	headerTitle: {
 		color: "#FFFFFF",
@@ -304,7 +189,8 @@ const styles = StyleSheet.create({
 		opacity: 0.6,
 	},
 	scrollContent: {
-		paddingBottom: 20,
+		paddingHorizontal: 20,
+		paddingBottom: Platform.OS === "web" ? 40 : 60,
 	},
 	profileCard: {
 		alignItems: "center",

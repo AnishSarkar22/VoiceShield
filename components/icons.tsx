@@ -16,6 +16,32 @@ export function HomeIcon({ size = 24, color = "#fff" }: IconProps) {
 	);
 }
 
+export function HomeInactiveIcon({ size = 24, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+			<Path
+				fill={color}
+				d="M6 19h3v-5q0-.425.288-.712T10 13h4q.425 0 .713.288T15 14v5h3v-9l-6-4.5L6 10zm-2 0v-9q0-.475.213-.9t.587-.7l6-4.5q.525-.4 1.2-.4t1.2.4l6 4.5q.375.275.588.7T20 10v9q0 .825-.588 1.413T18 21h-4q-.425 0-.712-.288T13 20v-5h-2v5q0 .425-.288.713T10 21H6q-.825 0-1.412-.587T4 19m8-6.75"
+			/>
+		</Svg>
+	);
+}
+
+export function EmailIcon({ size = 20, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+			<Rect width="18.5" height="17" x="2.682" y="3.5" rx="4" stroke={color} strokeWidth="1.5" />
+			<Path
+				stroke={color}
+				strokeWidth="1.5"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				d="m2.729 7.59l7.205 4.13a3.96 3.96 0 0 0 3.975 0l7.225-4.13"
+			/>
+		</Svg>
+	);
+}
+
 export function RecordingsIcon({ size = 24, color = "#fff" }: IconProps) {
 	return (
 		<Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
@@ -46,6 +72,32 @@ export function RecordingsIcon({ size = 24, color = "#fff" }: IconProps) {
 				</Mask>
 			</Defs>
 			<Path fill={color} d="M0 0h48v48H0z" mask="url(#microphone-mask)" />
+		</Svg>
+	);
+}
+
+export function RecordingsInactiveIcon({ size = 24, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="0 0 48 48">
+			<Defs>
+				<Mask id="SVGsbUJ6bai">
+					<G fill="none" stroke="#fff" strokeLinejoin="round" strokeWidth="4">
+						<Rect
+							width="38"
+							height="24"
+							x="5"
+							y="18"
+							fill="#555555"
+							strokeLinecap="round"
+							rx="2"
+						/>
+						<Path strokeLinecap="round" d="M8 12h32M15 6h18m-7 18v6" />
+						<Path d="M18 32.75c0-1.52 1.29-2.75 2.88-2.75H26v3.25c0 1.52-1.29 2.75-2.88 2.75h-2.24C19.29 36 18 34.77 18 33.25z" />
+						<Path strokeLinecap="round" d="m31 25l-5-1" />
+					</G>
+				</Mask>
+			</Defs>
+			<Path fill={color} d="M0 0h48v48H0z" mask="url(#SVGsbUJ6bai)" />
 		</Svg>
 	);
 }
@@ -104,6 +156,47 @@ export function PersonIcon({ size = 24, color = "#fff" }: IconProps) {
 			<Path
 				fill={color}
 				d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+			/>
+		</Svg>
+	);
+}
+
+export function DeleteIcon({ size = 18, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+			<Path
+				d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
+				stroke={color}
+				strokeWidth="2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</Svg>
+	);
+}
+
+export function StopIcon({ size = 24, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="-4 -4 24 24" fill="none">
+			<Path
+				fill={color}
+				d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0-2h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4"
+			/>
+		</Svg>
+	);
+}
+
+export function PlayIcon({ size = 24, color = "#fff" }: IconProps) {
+	return (
+		<Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+			<Path
+				fill={color}
+				d="M6.25 8.047c0-1.93 2.093-3.132 3.76-2.16l6.777 3.954c1.653.964 1.653 3.354 0 4.319l-6.777 3.953c-1.667.972-3.76-.23-3.76-2.16zm3.004-.864a1 1 0 0 0-1.504.864v7.906a1 1 0 0 0 1.504.864l6.777-3.953a1 1 0 0 0 0-1.728z"
+			/>
+			<Path
+				fill={color}
+				opacity={0.5}
+				d="M7.75 8.047a1 1 0 0 1 1.504-.864l6.777 3.953a1 1 0 0 1 0 1.728l-6.777 3.953a1 1 0 0 1-1.504-.864z"
 			/>
 		</Svg>
 	);

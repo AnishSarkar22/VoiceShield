@@ -1,4 +1,9 @@
-import { HomeIcon, RecordingsIcon } from "@/components/icons";
+import {
+	HomeIcon,
+	HomeInactiveIcon,
+	RecordingsIcon,
+	RecordingsInactiveIcon,
+} from "@/components/icons";
 import { CommonActions } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
@@ -65,14 +70,24 @@ export default function TabLayout() {
 				name="index"
 				options={{
 					title: "Home",
-					tabBarIcon: ({ color }) => <HomeIcon color={color} size={26} />,
+					tabBarIcon: ({ color, focused, size = 26 }) =>
+						focused ? (
+							<HomeIcon color={color} size={size} />
+						) : (
+							<HomeInactiveIcon color={color} size={size} />
+						),
 				}}
 			/>
 			<Tabs.Screen
 				name="recordings"
 				options={{
 					title: "Recordings",
-					tabBarIcon: ({ color }) => <RecordingsIcon color={color} size={26} />,
+					tabBarIcon: ({ color, focused, size = 26 }) =>
+						focused ? (
+							<RecordingsIcon color={color} size={size} />
+						) : (
+							<RecordingsInactiveIcon color={color} size={size} />
+						),
 				}}
 			/>
 		</Tabs>

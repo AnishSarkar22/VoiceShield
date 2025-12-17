@@ -4,8 +4,10 @@ import { RecordingModal } from "@/components/modals/recording-modal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { saveRecordingFile } from "@/services/recording-service";
 import { useRef, useState } from "react";
 import {
+	Alert,
 	Animated,
 	Dimensions,
 	Platform,
@@ -44,10 +46,15 @@ export default function HomeScreen() {
 		setIsRecording(true);
 	};
 
-	const handleStopRecording = (uri: string) => {
+	const handleStopRecording = async (uri: string, duration: number) => {
 		setIsRecording(false);
-		console.log("Recording saved at:", uri);
-		// Handle the saved recording URI here
+		try {
+			await saveRecordingFile(uri, duration);
+			// Optionally show a success message
+		} catch (error) {
+			console.error("Failed to save recording:", error);
+			Alert.alert("Error", "Failed to save recording. Please try again.");
+		}
 	};
 
 	const handleClose = () => {

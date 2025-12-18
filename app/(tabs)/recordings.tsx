@@ -126,27 +126,20 @@ export default function RecordingsScreen() {
 		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	};
 
-	const formatRecordingName = (fileName: string): string => {
-		// Try to extract timestamp from filename (e.g., "recording-1734528123456.m4a")
-		const timestampMatch = fileName.match(/recording-(\d+)/);
-		if (timestampMatch) {
-			const timestamp = Number.parseInt(timestampMatch[1], 10);
-			const date = new Date(timestamp);
-			return date.toLocaleString("en-US", {
-				month: "short",
-				day: "numeric",
-				hour: "numeric",
-				minute: "2-digit",
-				hour12: true,
-			});
-		}
-		// Fallback to cleaned filename
-		return fileName.replace(/^recording-/, "").replace(/\.(m4a|webm|ogg)$/, "");
+	const formatRecordingName = (createdAt: number): string => {
+		const date = new Date(createdAt);
+		return date.toLocaleString("en-US", {
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+			hour12: true,
+		});
 	};
 
 	const renderRecordingItem = ({ item }: { item: Recording }) => {
 		const isPlaying = playingId === item.id && playerStatus.playing;
-		const displayName = formatRecordingName(item.file_name);
+		const displayName = formatRecordingName(item.created_at);
 
 		return (
 			<TouchableOpacity
@@ -223,20 +216,11 @@ export default function RecordingsScreen() {
 		<ThemedView style={styles.container}>
 			<View style={styles.header}>
 				<ThemedText style={styles.title}>Recordings</ThemedText>
-				{/* {recordings.length > 0 && (
-					<ThemedText style={[styles.count, { color: iconColor }]}>
-						{recordings.length}{" "}
-						{recordings.length === 1 ? "recording" : "recordings"}
-					</ThemedText>
-				)} */}
 			</View>
 
 			{recordings.length === 0 ? (
 				<View style={styles.emptyState}>
 					<ThemedText style={styles.emptyTitle}>No recordings yet</ThemedText>
-					<ThemedText style={[styles.emptySubtitle, { color: iconColor }]}>
-						Start recording from the home screen to see your recordings here
-					</ThemedText>
 				</View>
 			) : (
 				<FlatList

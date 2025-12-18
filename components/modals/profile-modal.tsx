@@ -27,14 +27,14 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
 	const [recordingsCount, setRecordingsCount] = useState(0);
 
 	// Snap points for the bottom sheet
-	const snapPoints = useMemo(() => ["85%"], []);
+	const snapPoints = useMemo(() => ["90%"], []);
 
 	// Mock profile data - replace with actual data from your state/context
 	const profileData = {
 		name: "John Doe",
 		email: "john.doe@example.com",
 		phone: "+1 (555) 123-4567",
-		memberSince: "January 2024",
+		memberSince: "January 2025",
 	};
 
 	useEffect(() => {
